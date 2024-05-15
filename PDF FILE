@@ -1,0 +1,67 @@
+  Future<void> _printBilldata() async {
+    try {
+      final List<Billdata> billDataList = await fetchBillData();
+
+      if (billDataList.isNotEmpty) {
+        final pdf = pw.Document();
+
+        final header = [
+          'BILL NO',
+          'BILL AMOUNT',
+          'CUSTOMERNAME',
+          'QTY',
+          'NETAMOUNT'
+        ];
+        pdf.addPage(
+          pw.MultiPage(
+            header: (pw.Context context) {
+              return pw.Container(
+                alignment: pw.Alignment.center,
+                margin: pw.EdgeInsets.only(bottom: 20.0),
+                child: pw.Text(
+                  'BILL REPORT',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              );
+            },
+            build: (pw.Context context) {
+              return [
+                pw.Table.fromTextArray(
+                  border: pw.TableBorder.all(),
+                  headerDecoration: pw.BoxDecoration(color: PdfColors.grey300),
+                  headerStyle: pw.TextStyle(color: PdfColors.black),
+                  data: <List<String>>[
+                    header,
+                    for (final billData in billDataList)
+                      [
+                        billData.billno.toString(),
+                        billData.billDate,
+                        billData.customerName,
+                        billData.qty.toString(),
+                        billData.netAmount.toString(),
+                      ]
+                  ],
+                )
+              ];
+            },
+          ),
+        );
+
+        final output = await getTemporaryDirectory();
+        await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => pdf.save());
+        final file = File('${output.path}/BILL_REPORT.pdf');
+        final pdfBytes = await pdf.save(); // Save PDF as bytes
+        await file.writeAsBytes(pdfBytes); // Write bytes to file
+        await Printing.sharePdf(bytes: pdfBytes, filename: 'BILL_REPORT.pdf');
+      } else {
+        // Handle case when billDataList is empty
+        print('No bill data available');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
